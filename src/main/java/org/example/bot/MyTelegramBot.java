@@ -1,6 +1,7 @@
 package org.example.bot;
 
 import org.example.bot.constants.Actions;
+import org.example.bot.constants.TextCommands;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.extensions.bots.commandbot.TelegramLongPollingCommandBot;
@@ -14,10 +15,12 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.util.List;
+import java.util.Objects;
 
 @Component
 public class MyTelegramBot extends TelegramLongPollingCommandBot {
     private final String username;
+
     public MyTelegramBot(@Value("${bot.token}") String botToken, @Value("${bot.username}") String username) {
         super(botToken);
         this.username = username;
@@ -30,24 +33,24 @@ public class MyTelegramBot extends TelegramLongPollingCommandBot {
 
     @Override
     public void processNonCommandUpdate(Update update) {
-        if (update.hasCallbackQuery()){
+        if (update.hasCallbackQuery()) {
             var callbackQuery = update.getCallbackQuery();
-            switch (callbackQuery.getData()){
+            switch (callbackQuery.getData()) {
                 case Actions.SOME_ACTION -> {
                     try {
                         var replyMarkup = ReplyKeyboardMarkup.builder()
-                                        .keyboardRow(new KeyboardRow(List.of(
-                                                new KeyboardButton("I'm reply keyboard button")
-                                        )
-                        ))
-                                        .build();
-                        sendApiMethod( SendMessage.builder()
+                                .resizeKeyboard(true)
+                                .keyboardRow(new KeyboardRow(List.of(
+                                        new KeyboardButton(TextCommands.DEMO_TEXT_COMMAND)
+                                )
+                                ))
+                                .build();
+                        sendApiMethod(SendMessage.builder()
                                 .chatId(callbackQuery.getMessage().getChatId())
                                 .text("After callback message")
                                 .replyMarkup(replyMarkup)
                                 .build());
-                    }
-                    catch (TelegramApiException e){
+                    } catch (TelegramApiException e) {
                         throw new RuntimeException(e);
                     }
                 }
@@ -59,6 +62,14 @@ public class MyTelegramBot extends TelegramLongPollingCommandBot {
                         .build());
             } catch (TelegramApiException e) {
                 throw new RuntimeException(e);
+            }
+        }
+        if (update.hasMessage() && update.getMessage().hasText()) {
+            var message = update.getMessage();
+            var text = message.getText();
+            var command = getRegisteredCommand(text);
+            if (Objects.nonNull(command)){
+                command.processMessage(this, message, new String[]{});
             }
         }
     }
